@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Deep Lore — Visual Evidence</title>
+    <!-- GSAP is vendored, not CDN-loaded: the determinism contract bans
+         render-time network fetches for required assets. -->
+    <script src="assets/gsap.min.js"></script>
+    <!-- No external font <link>: the producer resolves the families named in
+         the CSS below and injects deterministic @font-face rules at compile. -->
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background-color: #0d131d;
+      }
+
+      /* ─── Palette ────────────────────────────────────────────────
+         60% base   #0D131D  deep slate
+         30% struct #F59E0B  imperial gold
+         10% focal  #00E5FF  electric cyan
+      ─────────────────────────────────────────────────────────────── */
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        font-family: "EB Garamond", serif;
+        color: #f8fafc;
+      }
+
+      /* ── Full-bleed base layer (never on #root itself) ───────────── */
+      .backdrop {
+        position: absolute;
+        inset: 0;
+        background-color: #0d131d;
+        overflow: hidden;
+      }
+
+      /* Ken Burns plate — oversized so a slow scale never reveals an edge */
+      .plate {
+        position: absolute;
+        left: -6%;
+        top: -6%;
+        width: 112%;
+        height: 112%;
+        transform-origin: 38% 52%;
+        background-image:
+          radial-gradient(circle at 30% 48%, rgba(245, 158, 11, 0.13) 0%, transparent 58%),
+          radial-gradient(circle at 78% 68%, rgba(0, 229, 255, 0.07) 0%, transparent 52%);
+      }
+
+      /* Faint survey grid — archival chart texture, not a gamer HUD */
+      .grid-plate {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(148, 163, 184, 0.055) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(148, 163, 184, 0.055) 1px, transparent 1px);
+        background-size: 120px 120px;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          ellipse 78% 68% at 50% 50%,
+          transparent 42%,
+          rgba(5, 8, 13, 0.72) 100%
+        );
+      }
+
+      /* ── Stage ───────────────────────────────────────────────────── */
+      .stage {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 96px;
+        align-content: center;
+        padding: 132px 128px 150px;
+      }
+
+      /* ═══ PANEL B — Editorial narrative ═══════════════════════════ */
+      .narrative {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: 4.5px;
+        text-transform: uppercase;
+        color: #00e5ff;
+        margin-bottom: 30px;
+      }
+
+      .eyebrow-dot {
+        display: block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background-color: #00e5ff;
+        flex: none;
+      }
+
+      .headline {
+        font-family: "EB Garamond", serif;
+        font-weight: 400;
+        font-size: 74px;
+        line-height: 1.1;
+        letter-spacing: -0.5px;
+        color: #f59e0b;
+        /* No max-width: lines are split deliberately below, one per mask.
+           A wrap inside a mask would break the per-line reveal. */
+        white-space: nowrap;
+      }
+
+      /* Per-line reveal: each mask clips its line, the inner span slides up */
+      .line-mask {
+        display: block;
+        overflow: hidden;
+      }
+
+      .line-inner {
+        display: block;
+      }
+
+      .divider {
+        display: block;
+        width: 100%;
+        height: 2px;
+        margin: 34px 0 30px;
+        transform-origin: left center;
+        background: linear-gradient(90deg, #f59e0b 0%, rgba(245, 158, 11, 0.06) 100%);
+      }
+
+      .body-text {
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 22px;
+        font-weight: 400;
+        line-height: 1.62;
+        color: #94a3b8;
+        max-width: 40ch;
+      }
+
+      .byline {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-top: 42px;
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 2.2px;
+        text-transform: uppercase;
+        color: #94a3b8;
+      }
+
+      .byline-rule {
+        display: block;
+        width: 46px;
+        height: 1px;
+        background-color: rgba(245, 158, 11, 0.55);
+        flex: none;
+      }
+
+      /* ═══ PANEL A — Archival evidence ═════════════════════════════ */
+      .evidence {
+        position: relative;
+        align-self: center;
+        background-color: #151d2a;
+        border-radius: 0 10px 10px 0;
+        padding: 46px 48px 44px;
+        box-shadow: 0 34px 68px -20px rgba(0, 0, 0, 0.72);
+        overflow: hidden;
+      }
+
+      /* Gold spine drawn on, so it reads as the panel "opening" */
+      .spine {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 4px;
+        height: 100%;
+        transform-origin: center top;
+        background-color: #f59e0b;
+      }
+
+      .evidence-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 24px;
+        padding-bottom: 20px;
+        margin-bottom: 26px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+      }
+
+      .evidence-label {
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 2.6px;
+        text-transform: uppercase;
+        color: #94a3b8;
+      }
+
+      .evidence-ref {
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 1.6px;
+        color: #f59e0b;
+      }
+
+      /* ── The actual evidence: a geological section, drawn ────────── */
+      .section-figure {
+        position: relative;
+        width: 100%;
+        height: 268px;
+        margin-bottom: 46px;
+      }
+
+      .section-figure svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .strata-band,
+      .anomaly-fill {
+        transform-box: fill-box;
+        transform-origin: left center;
+      }
+
+      /* Gold depth bracket draws on via dash offset (path length 66) */
+      .depth-bracket {
+        stroke-dasharray: 66;
+      }
+
+      .depth-label {
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        fill: #f59e0b;
+      }
+
+      .figure-caption {
+        position: absolute;
+        left: 0;
+        bottom: -28px;
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: #94a3b8;
+      }
+
+      /* ── Archival quote with the cyan focal highlight ────────────── */
+      .quote {
+        font-family: "EB Garamond", serif;
+        font-size: 27px;
+        font-style: italic;
+        font-weight: 300;
+        line-height: 1.5;
+        color: #f8fafc;
+      }
+
+      /* Highlight = relatively positioned inline-block; the sweep is a
+         sized block child scaled from the left, then text sits above it. */
+      .highlight {
+        position: relative;
+        display: inline-block;
+        font-style: normal;
+        font-weight: 600;
+        color: #00e5ff;
+        padding: 0 4px;
+      }
+
+      .highlight-sweep {
+        position: absolute;
+        inset: 0;
+        display: block;
+        transform-origin: left center;
+        background-color: rgba(0, 229, 255, 0.16);
+        border-bottom: 2px solid #00e5ff;
+      }
+
+      .highlight-text {
+        position: relative;
+      }
+
+      .evidence-foot {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 30px;
+        padding-top: 22px;
+        border-top: 1px solid rgba(148, 163, 184, 0.16);
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 2.4px;
+        text-transform: uppercase;
+        color: #00e5ff;
+      }
+
+      .foot-dot {
+        display: block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background-color: #00e5ff;
+        flex: none;
+      }
+
+      /* ── Palette legend ──────────────────────────────────────────── */
+      .legend {
+        position: absolute;
+        left: 128px;
+        bottom: 62px;
+        display: flex;
+        gap: 34px;
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 1.4px;
+        color: #94a3b8;
+      }
+
+      .swatch {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .swatch-chip {
+        display: block;
+        width: 13px;
+        height: 13px;
+        border-radius: 3px;
+        flex: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="8"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- ── Track 0: base plate + slow Ken Burns ──────────────────── -->
+      <div
+        id="backdrop"
+        class="clip backdrop"
+        data-start="0"
+        data-duration="8"
+        data-track-index="0"
+      >
+        <!-- Deliberately oversized: the Ken Burns scale must never expose an edge -->
+        <div id="plate" class="plate" data-layout-allow-overflow>
+          <div class="grid-plate"></div>
+        </div>
+        <div class="vignette"></div>
+      </div>
+
+      <!-- ── Track 1: editorial stage ──────────────────────────────── -->
+      <div id="stage" class="clip stage" data-start="0" data-duration="8" data-track-index="1">
+        <!-- PANEL B — narrative -->
+        <div class="narrative">
+          <div id="eyebrow" class="eyebrow">
+            <span id="eyebrow-dot" class="eyebrow-dot"></span>
+            <span>Visual Evidence · Chapter 03</span>
+          </div>
+
+          <h1 class="headline">
+            <span class="line-mask"
+              ><span class="line-inner hl-line" data-layout-allow-overflow
+                >The Hidden Kingdom</span
+              ></span
+            >
+            <span class="line-mask"
+              ><span class="line-inner hl-line" data-layout-allow-overflow
+                >Below the Crater</span
+              ></span
+            >
+          </h1>
+
+          <span id="divider" class="divider"></span>
+
+          <p id="body-text" class="body-text">
+            In-game records place the city's fall in the First Age. The geological section tells a
+            different story — an intact sub-layer, cut and dressed, laid down three centuries after
+            the ruin above it.
+          </p>
+
+          <div id="byline" class="byline">
+            <span class="byline-rule"></span>
+            <span>Survey Archive · Sector 7</span>
+          </div>
+        </div>
+
+        <!-- PANEL A — archival evidence -->
+        <div id="evidence" class="evidence">
+          <span id="spine" class="spine"></span>
+
+          <div id="evidence-head" class="evidence-head">
+            <span class="evidence-label">Archival Inscription</span>
+            <span class="evidence-ref">#104 / CORE-7</span>
+          </div>
+
+          <div class="section-figure">
+            <!-- viewBox matches the panel's inner width (688px) 1:1, so
+                 strokes and labels render undistorted. Left gutter 0–110
+                 carries the depth annotation, strata occupy 110–688. -->
+            <svg viewBox="0 0 688 268" aria-hidden="true">
+              <!-- Sediment strata: expected chronology, top → bottom -->
+              <rect class="strata-band" x="110" y="8" width="578" height="34" fill="#243247" />
+              <rect class="strata-band" x="110" y="48" width="578" height="30" fill="#2c3d55" />
+              <rect class="strata-band" x="110" y="84" width="578" height="38" fill="#22304a" />
+              <rect class="strata-band" x="110" y="128" width="578" height="28" fill="#2a3a52" />
+
+              <!-- The anomaly: dressed masonry where bedrock should be -->
+              <rect
+                id="anomaly"
+                class="anomaly-fill"
+                x="110"
+                y="162"
+                width="578"
+                height="46"
+                fill="rgba(0, 229, 255, 0.2)"
+                stroke="#00e5ff"
+                stroke-width="2"
+              />
+
+              <rect class="strata-band" x="110" y="214" width="578" height="46" fill="#1c2739" />
+
+              <!-- Gold depth bracket marking the anomalous course -->
+              <path
+                id="bracket"
+                class="depth-bracket"
+                d="M 96 162 L 86 162 L 86 208 L 96 208"
+                stroke="#f59e0b"
+                stroke-width="2"
+                fill="none"
+              />
+              <text id="depth-label" class="depth-label" x="72" y="190" text-anchor="end">
+                9.4 m
+              </text>
+            </svg>
+            <span id="fig-caption" class="figure-caption">Fig. 4 — Core sample, 0–14 m</span>
+          </div>
+
+          <div class="quote">
+            "Built upon the bedrock
+            <span class="highlight"
+              ><span id="sweep" class="highlight-sweep"></span
+              ><span class="highlight-text">before the sky fell</span></span
+            >, surviving three successive eras."
+          </div>
+
+          <div id="evidence-foot" class="evidence-foot">
+            <span class="foot-dot"></span>
+            <span>Stratum predates recorded collapse</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Track 2: palette legend ───────────────────────────────── -->
+      <div id="legend-layer" class="clip" data-start="0" data-duration="8" data-track-index="2">
+        <div id="legend" class="legend">
+          <span class="swatch">
+            <span
+              class="swatch-chip"
+              style="background-color: #0d131d; border: 1px solid #334155"
+            ></span>
+            <span>60% Base · #0D131D</span>
+          </span>
+          <span class="swatch">
+            <span class="swatch-chip" style="background-color: #f59e0b"></span>
+            <span>30% Structure · #F59E0B</span>
+          </span>
+          <span class="swatch">
+            <span class="swatch-chip" style="background-color: #00e5ff"></span>
+            <span>10% Focal · #00E5FF</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const tl = gsap.timeline({ paused: true });
+
+      /* ── Continuous Ken Burns across the full 8s ─────────────────── */
+      tl.fromTo("#plate", { scale: 1 }, { scale: 1.075, duration: 8, ease: "none" }, 0);
+
+      /* ── Beat 1 · Panel B enters ─────────────────────────────────── */
+      tl.from("#eyebrow", { y: 18, opacity: 0, duration: 0.55, ease: "power2.out" }, 0.25);
+      tl.from("#eyebrow-dot", { scale: 0, duration: 0.45, ease: "back.out(2.4)" }, 0.4);
+
+      tl.from(
+        ".hl-line",
+        { yPercent: 112, duration: 0.78, ease: "power3.out", stagger: 0.11 },
+        0.5,
+      );
+
+      tl.from("#divider", { scaleX: 0, duration: 0.7, ease: "power2.inOut" }, 1.25);
+      tl.from("#body-text", { y: 22, opacity: 0, duration: 0.7, ease: "power2.out" }, 1.45);
+      tl.from("#byline", { x: -16, opacity: 0, duration: 0.6, ease: "power2.out" }, 1.75);
+
+      /* ── Beat 2 · Panel A slides in, spine draws down ────────────── */
+      tl.from("#evidence", { x: 54, opacity: 0, duration: 0.85, ease: "power3.out" }, 2.1);
+      tl.from("#spine", { scaleY: 0, duration: 0.6, ease: "power2.out" }, 2.35);
+      tl.from("#evidence-head", { y: 14, opacity: 0, duration: 0.55, ease: "power2.out" }, 2.55);
+
+      /* ── Beat 3 · Evidence draws: strata wipe in, top → bottom ───── */
+      tl.from(
+        ".strata-band",
+        { scaleX: 0, duration: 0.5, ease: "power2.out", stagger: 0.09 },
+        2.85,
+      );
+
+      /* ── Beat 4 · The anomaly resolves — the cyan focal moment ───── */
+      tl.from("#anomaly", { scaleX: 0, duration: 0.62, ease: "power3.out" }, 3.55);
+      tl.from("#bracket", { strokeDashoffset: 66, duration: 0.5, ease: "power2.out" }, 4.05);
+      tl.from("#depth-label", { opacity: 0, x: 8, duration: 0.42, ease: "power2.out" }, 4.35);
+      tl.from("#fig-caption", { opacity: 0, duration: 0.45, ease: "power1.out" }, 4.2);
+
+      /* ── Beat 5 · Highlight sweep across the quote ───────────────── */
+      tl.from("#sweep", { scaleX: 0, duration: 0.62, ease: "power2.inOut" }, 4.9);
+
+      /* ── Beat 6 · Verdict line lands ─────────────────────────────── */
+      tl.from("#evidence-foot", { y: 14, opacity: 0, duration: 0.6, ease: "power2.out" }, 5.5);
+
+      /* ── Beat 7 · Legend settles in last ─────────────────────────── */
+      tl.from("#legend", { opacity: 0, duration: 0.7, ease: "power1.out" }, 5.9);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
