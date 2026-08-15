@@ -1,0 +1,1098 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Ten Rooms — underrated games, shown not told</title>
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      /* ═══════════════════════════════════════════════════════════════
+         TEN ROOMS — 95s single continuous camera flight, 1920×1080
+
+         Ten underrated games, counted 10 → 1. Each is demonstrated by a
+         volumetric diorama that ENACTS its mechanic; the WebGL layer shows,
+         the HTML layer only names. Remove the type and the piece should
+         still communicate.
+
+         All geometry is original primitives. No box art, no logos.
+      ═══════════════════════════════════════════════════════════════ */
+      :root {
+        --void: #080b12;
+        --bone: #f2efe6;
+        --amber: #f0a63c;
+        --cyan: #4fd8e8;
+        --muted: #93a1b5;
+        --display: "Oswald", system-ui, sans-serif;
+        --meta: "Inter", system-ui, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background-color: var(--void);
+      }
+
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        color: var(--bone);
+      }
+
+      /* Full-bleed child carries the fill — never the composition root. */
+      .stage {
+        position: absolute;
+        inset: 0;
+        background-color: var(--void);
+      }
+
+      #gl {
+        display: block;
+        width: 1920px;
+        height: 1080px;
+      }
+
+      /* Scrim guarantees type contrast regardless of what the 3D is doing
+         behind it — the geometry brightness varies room to room. */
+      .scrim {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 460px;
+        background: linear-gradient(
+          180deg,
+          rgba(8, 11, 18, 0) 0%,
+          rgba(8, 11, 18, 0.82) 58%,
+          rgba(8, 11, 18, 0.94) 100%
+        );
+      }
+
+      .scrim-top {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 190px;
+        background: linear-gradient(180deg, rgba(8, 11, 18, 0.8) 0%, rgba(8, 11, 18, 0) 100%);
+      }
+
+      /* ── Lower third ──────────────────────────────────────────────── */
+      .card {
+        position: absolute;
+        left: 132px;
+        bottom: 122px;
+        display: flex;
+        align-items: flex-end;
+        gap: 42px;
+      }
+
+      .rank {
+        font-family: var(--display);
+        font-size: 210px;
+        font-weight: 700;
+        line-height: 0.78;
+        letter-spacing: -6px;
+        color: var(--amber);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .card-body {
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 12px;
+      }
+
+      .title {
+        font-family: var(--display);
+        font-size: 76px;
+        font-weight: 600;
+        line-height: 1;
+        letter-spacing: -0.5px;
+        color: var(--bone);
+        white-space: nowrap;
+      }
+
+      .line-mask {
+        display: block;
+        overflow: hidden;
+      }
+      .line-inner {
+        display: block;
+      }
+
+      .meta {
+        font-family: var(--meta);
+        font-size: 19px;
+        font-weight: 600;
+        letter-spacing: 3.4px;
+        text-transform: uppercase;
+        color: var(--cyan);
+        margin-top: 16px;
+      }
+
+      .hook {
+        font-family: var(--meta);
+        font-size: 25px;
+        font-weight: 300;
+        line-height: 1.45;
+        color: #c8d2e0;
+        margin-top: 18px;
+        max-width: 44ch;
+      }
+
+      /* ── Chapter rail (top) ───────────────────────────────────────── */
+      .rail {
+        position: absolute;
+        left: 132px;
+        top: 78px;
+        display: flex;
+        align-items: center;
+        gap: 11px;
+      }
+
+      .pip {
+        display: block;
+        width: 34px;
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(200, 210, 224, 0.24);
+      }
+
+      .pip.on {
+        background: var(--amber);
+      }
+
+      .rail-label {
+        font-family: var(--meta);
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 4.6px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-left: 20px;
+      }
+
+      /* ── Title / outro cards ──────────────────────────────────────── */
+      .bookend-scrim {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          ellipse 62% 40% at 50% 50%,
+          rgba(8, 11, 18, 0.93) 0%,
+          rgba(8, 11, 18, 0.72) 55%,
+          rgba(8, 11, 18, 0) 100%
+        );
+      }
+
+      .bookend {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 30px;
+      }
+
+      .big {
+        font-family: var(--display);
+        font-size: 132px;
+        font-weight: 700;
+        line-height: 0.95;
+        letter-spacing: -2px;
+        color: var(--bone);
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .kicker {
+        font-family: var(--meta);
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 8px;
+        text-transform: uppercase;
+        color: var(--amber);
+      }
+
+      .sub {
+        font-family: var(--meta);
+        font-size: 26px;
+        font-weight: 300;
+        color: #c8d2e0;
+        max-width: 52ch;
+      }
+
+      .rule {
+        display: block;
+        width: 340px;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--amber), transparent);
+        transform-origin: center center;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="95"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- ── Track 0 · the 3D world ────────────────────────────────── -->
+      <div id="world" class="clip stage" data-start="0" data-duration="95" data-track-index="0">
+        <canvas id="gl" width="1920" height="1080"></canvas>
+      </div>
+
+      <!-- ── Track 1 · naming layer ────────────────────────────────── -->
+      <div id="hud" class="clip" data-start="8" data-duration="80" data-track-index="1">
+        <div class="scrim-top"></div>
+        <div class="scrim"></div>
+
+        <div id="rail" class="rail">
+          <span class="pip" data-pip="0"></span><span class="pip" data-pip="1"></span
+          ><span class="pip" data-pip="2"></span><span class="pip" data-pip="3"></span
+          ><span class="pip" data-pip="4"></span><span class="pip" data-pip="5"></span
+          ><span class="pip" data-pip="6"></span><span class="pip" data-pip="7"></span
+          ><span class="pip" data-pip="8"></span><span class="pip" data-pip="9"></span>
+          <span class="rail-label">Underrated · Play before you die</span>
+        </div>
+
+        <div id="card" class="card">
+          <span id="rank" class="rank">10</span>
+          <div class="card-body">
+            <div class="title">
+              <span class="line-mask"
+                ><span id="title" class="line-inner" data-layout-allow-overflow>Norco</span></span
+              >
+            </div>
+            <span id="meta" class="meta">2022 · Geography of Robots</span>
+            <p id="hook" class="hook">
+              A refinery town told in layers — the story sits in the gaps between them.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Track 2 · opening card ────────────────────────────────── -->
+      <div id="introLayer" class="clip" data-start="0" data-duration="8" data-track-index="2">
+        <div class="bookend-scrim"></div>
+        <div class="bookend">
+          <span id="introKicker" class="kicker">Ten Rooms</span>
+          <h1 class="big">
+            <span class="line-mask"
+              ><span id="introL1" class="line-inner" data-layout-allow-overflow
+                >Games worth a life</span
+              ></span
+            >
+          </h1>
+          <span id="introRule" class="rule"></span>
+          <p id="introSub" class="sub">
+            Ten underrated games — each one shown, not described. Nothing here is explained in words
+            it can act out instead.
+          </p>
+        </div>
+      </div>
+
+      <!-- ── Track 3 · closing card ────────────────────────────────── -->
+      <div id="outroLayer" class="clip" data-start="88" data-duration="7" data-track-index="3">
+        <div class="bookend-scrim"></div>
+        <div class="bookend">
+          <h1 class="big">
+            <span class="line-mask"
+              ><span id="outroL1" class="line-inner" data-layout-allow-overflow
+                >Ten rooms. One life.</span
+              ></span
+            >
+          </h1>
+          <span id="outroRule" class="rule"></span>
+          <p id="outroSub" class="sub">
+            Swap any title — the list is a data array. The dioramas are the argument.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import * as THREE from "./assets/three.module.js";
+
+      /* ══════════════════════════════════════════════════════════════
+         THE TEMPLATE. Swapping a game is a one-line edit here — the
+         `room` field selects which diorama builder demonstrates it.
+      ══════════════════════════════════════════════════════════════ */
+      const GAMES = [
+        {
+          rank: 10,
+          title: "Norco",
+          meta: "2022 · Geography of Robots",
+          room: "layers",
+          hue: 0xf07a3c,
+          hook: "A refinery town told in layers — the story sits in the gaps between them.",
+        },
+        {
+          rank: 9,
+          title: "Void Stranger",
+          meta: "2023 · System Erasure",
+          room: "erase",
+          hue: 0x9d7cf0,
+          hook: "A sokoban that deletes its own floor. Every tile you take never comes back.",
+        },
+        {
+          rank: 8,
+          title: "Citizen Sleeper",
+          meta: "2022 · Jump Over the Age",
+          room: "dice",
+          hue: 0x4fd8e8,
+          hook: "You are a body on loan, and every morning the dice decide what it can do.",
+        },
+        {
+          rank: 7,
+          title: "Signalis",
+          meta: "2022 · rose-engine",
+          room: "align",
+          hue: 0xf04f6a,
+          hook: "Two halves of a person, and exactly one angle where they become one.",
+        },
+        {
+          rank: 6,
+          title: "The Forgotten City",
+          meta: "2021 · Modern Storyteller",
+          room: "loop",
+          hue: 0xf0c23c,
+          hook: "One sin damns everyone. The day resets until you learn whose.",
+        },
+        {
+          rank: 5,
+          title: "Pathologic 2",
+          meta: "2019 · Ice-Pick Lodge",
+          room: "spread",
+          hue: 0xc7593c,
+          hook: "A plague crosses the town on a clock you cannot stop, only outlast.",
+        },
+        {
+          rank: 4,
+          title: "Rain World",
+          meta: "2017 · Videocult",
+          room: "chain",
+          hue: 0x6fd08a,
+          hook: "An ecosystem that was never balanced around you. You are simply in it.",
+        },
+        {
+          rank: 3,
+          title: "Tunic",
+          meta: "2022 · Andrew Shouldice",
+          room: "assemble",
+          hue: 0x86d0f0,
+          hook: "The manual is the game. Pages found out of order become the map.",
+        },
+        {
+          rank: 2,
+          title: "Return of the Obra Dinn",
+          meta: "2018 · Lucas Pope",
+          room: "frozen",
+          hue: 0xe8e2d2,
+          hook: "Death held still, and you the only thing allowed to move around it.",
+        },
+        {
+          rank: 1,
+          title: "Outer Wilds",
+          meta: "2019 · Mobius Digital",
+          room: "orbit",
+          hue: 0xf0a63c,
+          hook: "Twenty-two minutes, then the sun takes it all back. Only what you know survives.",
+        },
+      ];
+
+      const INTRO = 8,
+        STATION = 8,
+        TOTAL = 95;
+      const stationStart = (i) => INTRO + i * STATION;
+
+      /* ── Deterministic PRNG — never Math.random() ─────────────────── */
+      function mulberry32(seed) {
+        return function () {
+          seed |= 0;
+          seed = (seed + 0x6d2b79f5) | 0;
+          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const smooth = (v) => {
+        const x = clamp01(v);
+        return x * x * (3 - 2 * x);
+      };
+      const lerp = (a, b, k) => a + (b - a) * k;
+
+      /* ── Renderer ─────────────────────────────────────────────────── */
+      const canvas = document.getElementById("gl");
+      /* Create the context explicitly: Chrome's first GPU-backed attempt fails
+         in this headless container before falling back to SwiftShader, and
+         letting three.js do it surfaces that as a console error. */
+      const glAttrs = {
+        antialias: true,
+        alpha: false,
+        depth: true,
+        powerPreference: "low-power",
+        failIfMajorPerformanceCaveat: false,
+        preserveDrawingBuffer: true,
+      };
+      const gl = canvas.getContext("webgl2", glAttrs) || canvas.getContext("webgl", glAttrs);
+      const renderer = new THREE.WebGLRenderer({ canvas, context: gl, antialias: true });
+      renderer.setSize(1920, 1080, false);
+      renderer.setPixelRatio(1);
+
+      const VOID = 0x080b12;
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(VOID);
+      /* Fog lets you see the next rooms arriving out of the dark — the piece
+         reads as one continuous space rather than ten separate shots. */
+      scene.fog = new THREE.Fog(VOID, 46, 190);
+
+      const camera = new THREE.PerspectiveCamera(42, 1920 / 1080, 0.5, 400);
+
+      scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x11161f, 1.15));
+      const key = new THREE.DirectionalLight(0xfff2dd, 1.5);
+      key.position.set(6, 12, 8);
+      scene.add(key);
+
+      /* ── Shared material language ─────────────────────────────────── */
+      const matStd = (hex, rough = 0.62, metal = 0.06) =>
+        new THREE.MeshStandardMaterial({ color: hex, roughness: rough, metalness: metal });
+      const matGlow = (hex) => new THREE.MeshBasicMaterial({ color: hex });
+      const SHELL = 0x1b2432;
+      const BONE = 0xe8e4da;
+
+      /* ══════════════════════════════════════════════════════════════
+         DIORAMA BUILDERS
+         Each returns { group, update(u) } where u is 0→1 across the
+         station. Every update is a pure function of u — no accumulators.
+      ══════════════════════════════════════════════════════════════ */
+      const ROOMS = {};
+
+      /* 10 · Norco — depth layers; parallax opens a gap and a figure is
+         standing in it, visible only because the camera moved. */
+      ROOMS.layers = (hue) => {
+        const g = new THREE.Group();
+        const rnd = mulberry32(1010);
+        const depths = [-13, -6, 1];
+        const tints = [0x121a26, 0x1b2836, 0x27394b];
+        depths.forEach((z, li) => {
+          const layer = new THREE.Group();
+          for (let i = 0; i < 13; i++) {
+            const w = 1.0 + rnd() * 2.4;
+            const h = 2.5 + rnd() * (li === 2 ? 5 : 9);
+            const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 1.2), matStd(tints[li], 0.9, 0));
+            b.position.set(-17 + i * 2.8 + rnd() * 1.1, h / 2 - 6, z);
+            layer.add(b);
+            if (rnd() > 0.62) {
+              const stack = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.26, 0.26, 3.4, 10),
+                matStd(tints[li], 0.9, 0),
+              );
+              stack.position.set(b.position.x, h - 4.3, z);
+              layer.add(stack);
+            }
+          }
+          g.add(layer);
+        });
+        const glowBar = new THREE.Mesh(new THREE.BoxGeometry(21, 0.14, 0.14), matGlow(hue));
+        glowBar.position.set(-2, -5.8, 3.2);
+        g.add(glowBar);
+        const figure = new THREE.Mesh(
+          new THREE.CapsuleGeometry(0.34, 1.1, 4, 10),
+          matGlow(0xf6e6c8),
+        );
+        figure.position.set(1.2, -5.0, -3.4);
+        g.add(figure);
+        const halo = new THREE.PointLight(hue, 26, 26);
+        halo.position.set(0, -2, 6);
+        g.add(halo);
+        return {
+          group: g,
+          update: (u) => {
+            figure.position.y = -5.0 + Math.sin(u * Math.PI) * 0.12;
+          },
+        };
+      };
+
+      /* 9 · Void Stranger — the floor deletes itself, tile by tile, and
+         another floor is waiting underneath. */
+      ROOMS.erase = (hue) => {
+        const g = new THREE.Group();
+        const N = 9,
+          P = 1.5;
+        const top = [],
+          order = [];
+        const rnd = mulberry32(909);
+        for (let x = 0; x < N; x++)
+          for (let z = 0; z < N; z++) {
+            const t = new THREE.Mesh(
+              new THREE.BoxGeometry(1.32, 0.34, 1.32),
+              matStd(0x2b3346, 0.72),
+            );
+            t.position.set((x - (N - 1) / 2) * P, -4, (z - (N - 1) / 2) * P);
+            g.add(t);
+            top.push(t);
+            order.push(rnd());
+          }
+        const idx = top.map((_, i) => i).sort((a, b) => order[a] - order[b]);
+        for (let x = 0; x < N; x++)
+          for (let z = 0; z < N; z++) {
+            const t = new THREE.Mesh(
+              new THREE.BoxGeometry(1.32, 0.2, 1.32),
+              matStd(hue, 0.5, 0.15),
+            );
+            t.position.set((x - (N - 1) / 2) * P + 0.4, -6.4, (z - (N - 1) / 2) * P + 0.4);
+            g.add(t);
+          }
+        const lamp = new THREE.PointLight(hue, 40, 34);
+        lamp.position.set(0, 2.5, 0);
+        g.add(lamp);
+        return {
+          group: g,
+          update: (u) => {
+            const gone = Math.floor(clamp01((u - 0.16) / 0.68) * (idx.length - 1));
+            idx.forEach((id, rank) => {
+              const s = rank < gone ? 0 : 1;
+              top[id].scale.set(s, s, s);
+            });
+          },
+        };
+      };
+
+      /* 8 · Citizen Sleeper — the dice land, the clocks close. */
+      ROOMS.dice = (hue) => {
+        const g = new THREE.Group();
+        const dice = [];
+        for (let i = 0; i < 3; i++) {
+          const d = new THREE.Mesh(new THREE.BoxGeometry(2.1, 2.1, 2.1), matStd(BONE, 0.42));
+          d.position.set((i - 1) * 3.9, -1.4, 0);
+          g.add(d);
+          dice.push(d);
+          for (let f = 0; f < 4; f++) {
+            const pip = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 10), matGlow(0x1b2432));
+            pip.position.set(((f % 2) - 0.5) * 0.9, ((f >> 1) - 0.5) * 0.9, 1.06);
+            d.add(pip);
+          }
+        }
+        const rings = [];
+        for (let i = 0; i < 3; i++) {
+          const r = new THREE.Mesh(
+            new THREE.TorusGeometry(2.9 + i * 1.15, 0.055, 8, 72),
+            matGlow(hue),
+          );
+          r.rotation.x = Math.PI / 2;
+          r.position.y = -4.4;
+          g.add(r);
+          rings.push(r);
+        }
+        const lamp = new THREE.PointLight(hue, 34, 30);
+        lamp.position.set(0, 3, 4);
+        g.add(lamp);
+        return {
+          group: g,
+          update: (u) => {
+            dice.forEach((d, i) => {
+              const settle = smooth(clamp01((u - i * 0.1) / 0.5));
+              const spin = (1 - settle) * 9;
+              d.rotation.x = spin + settle * (Math.PI / 2) * (i + 1);
+              d.rotation.y = spin * 1.3 + settle * Math.PI * (i % 2);
+              d.position.y = -1.4 + (1 - settle) * 3.4;
+            });
+            rings.forEach((r, i) => {
+              const k = smooth(clamp01((u - 0.44 - i * 0.11) / 0.4));
+              r.scale.setScalar(lerp(1, 0.12, k));
+            });
+          },
+        };
+      };
+
+      /* 7 · Signalis — two halves separated in depth that resolve into one
+         figure from exactly one angle. The camera finds it, then loses it. */
+      ROOMS.align = (hue) => {
+        const g = new THREE.Group();
+        const mk = (z, tint) => {
+          const p = new THREE.Group();
+          const body = new THREE.Mesh(
+            new THREE.CapsuleGeometry(0.95, 2.7, 6, 14),
+            matStd(tint, 0.55),
+          );
+          body.position.y = -2.1;
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.86, 22, 18), matStd(tint, 0.5));
+          head.position.y = 0.55;
+          p.add(body);
+          p.add(head);
+          p.position.z = z;
+          return p;
+        };
+        const far = mk(-7.5, 0x8f97ab);
+        const near = mk(5.2, hue);
+        far.scale.setScalar(1.62);
+        g.add(far);
+        g.add(near);
+        const floor = new THREE.Mesh(new THREE.CircleGeometry(11, 48), matStd(0x161d2a, 0.95));
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -5.2;
+        g.add(floor);
+        const lamp = new THREE.PointLight(hue, 32, 34);
+        lamp.position.set(0, 4, 8);
+        g.add(lamp);
+        return { group: g, update: () => {} };
+      };
+
+      /* 6 · The Forgotten City — the ring of the damned, and the reset. */
+      ROOMS.loop = (hue) => {
+        const g = new THREE.Group();
+        const figures = [];
+        const N = 14;
+        for (let i = 0; i < N; i++) {
+          const a = (i / N) * Math.PI * 2;
+          const f = new THREE.Group();
+          const body = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.42, 0.62, 2.9, 12),
+            matStd(hue, 0.34, 0.55),
+          );
+          const head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.42, 16, 14),
+            matStd(hue, 0.34, 0.55),
+          );
+          head.position.y = 1.8;
+          f.add(body);
+          f.add(head);
+          f.position.set(Math.cos(a) * 7.4, -3.4, Math.sin(a) * 7.4);
+          f.rotation.y = -a;
+          g.add(f);
+          figures.push({ f, a });
+        }
+        const plinth = new THREE.Mesh(
+          new THREE.CylinderGeometry(2.5, 3.1, 1.1, 28),
+          matStd(0x232c3c, 0.8),
+        );
+        plinth.position.y = -4.6;
+        g.add(plinth);
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 22, 10), matGlow(hue));
+        beam.position.y = 5;
+        g.add(beam);
+        const lamp = new THREE.PointLight(hue, 44, 40);
+        lamp.position.set(0, 2, 0);
+        g.add(lamp);
+        return {
+          group: g,
+          update: (u) => {
+            /* Three quarters of the station the ring turns; then it snaps
+               back to exactly where it began. The loop, enacted. */
+            const cycle = u < 0.78 ? (u / 0.78) * 1.35 : 0;
+            figures.forEach(({ f, a }) => {
+              const ang = a + cycle;
+              f.position.set(
+                Math.cos(ang) * 7.4,
+                -3.4 + Math.sin(cycle * 2 + a) * 0.16,
+                Math.sin(ang) * 7.4,
+              );
+              f.rotation.y = -ang;
+            });
+            beam.scale.set(1, u < 0.78 ? 1 : 1.5, 1);
+          },
+        };
+      };
+
+      /* 5 · Pathologic 2 — the stain crosses the town; the clock drains. */
+      ROOMS.spread = (hue) => {
+        const g = new THREE.Group();
+        const houses = [];
+        const rnd = mulberry32(505);
+        for (let x = 0; x < 8; x++)
+          for (let z = 0; z < 8; z++) {
+            const h = 1.1 + rnd() * 2.7;
+            const m = new THREE.Mesh(new THREE.BoxGeometry(1.25, h, 1.25), matStd(0x2d3648, 0.85));
+            const px = (x - 3.5) * 2.3,
+              pz = (z - 3.5) * 2.3;
+            m.position.set(px, -4.6 + h / 2, pz);
+            g.add(m);
+            houses.push({ m, d: Math.hypot(px + 8, pz + 8) });
+          }
+        const maxD = Math.max(...houses.map((h) => h.d));
+        const column = new THREE.Mesh(new THREE.BoxGeometry(0.85, 12, 0.85), matGlow(hue));
+        column.position.set(11.5, 1.4, 0);
+        g.add(column);
+        const lamp = new THREE.PointLight(hue, 30, 36);
+        lamp.position.set(-6, 4, 6);
+        g.add(lamp);
+        const infected = new THREE.Color(hue),
+          clean = new THREE.Color(0x2d3648);
+        return {
+          group: g,
+          update: (u) => {
+            const front = smooth(clamp01((u - 0.1) / 0.72)) * maxD * 1.05;
+            houses.forEach(({ m, d }) => {
+              m.material.color.copy(d < front ? infected : clean);
+            });
+            column.scale.y = lerp(1, 0.08, smooth(clamp01((u - 0.08) / 0.82)));
+            column.position.y = 1.4 - (1 - column.scale.y) * 6;
+          },
+        };
+      };
+
+      /* 4 · Rain World — the chain: each thing eats the next, and none of
+         it is arranged around you. */
+      ROOMS.chain = (hue) => {
+        const g = new THREE.Group();
+        const links = [];
+        const sizes = [0.55, 0.95, 1.5, 2.3];
+        for (let i = 0; i < 4; i++) {
+          const c = new THREE.Mesh(
+            new THREE.CapsuleGeometry(sizes[i] * 0.5, sizes[i] * 1.5, 5, 12),
+            matStd(i === 3 ? hue : 0x38506a, 0.62),
+          );
+          c.rotation.z = Math.PI / 2;
+          c.position.set(-9 + i * 5.4, -3.4 + i * 1.15, i * -2.6);
+          g.add(c);
+          const eye = new THREE.Mesh(
+            new THREE.SphereGeometry(sizes[i] * 0.16, 10, 10),
+            matGlow(0xf6e6c8),
+          );
+          eye.position.set(sizes[i] * 0.85, 0, sizes[i] * 0.34);
+          c.add(eye);
+          links.push(c);
+        }
+        const rain = [];
+        const rnd = mulberry32(404);
+        for (let i = 0; i < 90; i++) {
+          const d = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.9, 0.035), matGlow(0x5b7fa8));
+          d.position.set(-16 + rnd() * 32, 6 - rnd() * 12, -10 + rnd() * 16);
+          g.add(d);
+          rain.push({ d, s: 5 + rnd() * 7, y0: d.position.y });
+        }
+        const lamp = new THREE.PointLight(hue, 26, 34);
+        lamp.position.set(4, 3, 6);
+        g.add(lamp);
+        return {
+          group: g,
+          update: (u) => {
+            links.forEach((c, i) => {
+              const lunge = Math.max(0, Math.sin((u * 3.1 - i * 0.34) * Math.PI));
+              c.position.x = -9 + i * 5.4 + lunge * 1.5;
+            });
+            rain.forEach((r) => {
+              r.d.position.y = ((r.y0 - u * r.s * 4 + 30) % 18) - 8;
+            });
+          },
+        };
+      };
+
+      /* 3 · Tunic — loose pages that fold into the map. */
+      ROOMS.assemble = (hue) => {
+        const g = new THREE.Group();
+        const pages = [];
+        const rnd = mulberry32(303);
+        for (let i = 0; i < 12; i++) {
+          const p = new THREE.Mesh(
+            new THREE.PlaneGeometry(2.6, 3.4),
+            new THREE.MeshStandardMaterial({
+              color: BONE,
+              roughness: 0.85,
+              side: THREE.DoubleSide,
+            }),
+          );
+          const a = (i / 12) * Math.PI * 2;
+          pages.push({
+            p,
+            from: new THREE.Vector3(
+              Math.cos(a) * (5.2 + rnd() * 2.4),
+              -2 + rnd() * 4.4,
+              Math.sin(a) * (5.2 + rnd() * 2.4),
+            ),
+            to: new THREE.Vector3(((i % 4) - 1.5) * 2.75, -1.2 + Math.floor(i / 4) * 3.6 - 3.6, 0),
+            rFrom: new THREE.Vector3(rnd() * 6, rnd() * 6, rnd() * 6),
+          });
+          g.add(p);
+        }
+        const rim = new THREE.Mesh(new THREE.BoxGeometry(12.1, 11.7, 0.04), matGlow(hue));
+        rim.position.z = -0.34;
+        g.add(rim);
+        const glowEdge = new THREE.Mesh(
+          new THREE.BoxGeometry(11.6, 11.2, 0.06),
+          matStd(0x141c28, 0.92),
+        );
+        glowEdge.position.z = -0.28;
+        g.add(glowEdge);
+        const lamp = new THREE.PointLight(hue, 30, 34);
+        lamp.position.set(0, 2, 8);
+        g.add(lamp);
+        return {
+          group: g,
+          update: (u) => {
+            pages.forEach(({ p, from, to, rFrom }, i) => {
+              const k = smooth(clamp01((u - 0.12 - i * 0.036) / 0.5));
+              p.position.lerpVectors(from, to, k);
+              p.rotation.set(lerp(rFrom.x, 0, k), lerp(rFrom.y, 0, k), lerp(rFrom.z, 0, k));
+            });
+            const lit = smooth(clamp01((u - 0.68) / 0.26));
+            rim.scale.setScalar(lerp(0.18, 1, lit));
+            glowEdge.scale.setScalar(lerp(0.18, 1, lit));
+          },
+        };
+      };
+
+      /* 2 · Return of the Obra Dinn — everything frozen; only the camera is
+         permitted to move. The one room with a static update(). */
+      ROOMS.frozen = (hue) => {
+        const g = new THREE.Group();
+        const deck = new THREE.Mesh(new THREE.BoxGeometry(16, 0.6, 11), matStd(0x2a3140, 0.9));
+        deck.position.y = -5;
+        g.add(deck);
+        const mast = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.28, 0.36, 15, 12),
+          matStd(0x39414f, 0.85),
+        );
+        mast.position.set(-1.5, 2.5, 0);
+        g.add(mast);
+        const poses = [
+          [-5.2, 0.4, 2.1, 0.9],
+          [-2.1, -0.2, -2.6, -0.5],
+          [1.6, 0.9, 1.2, 2.2],
+          [4.4, -0.3, -1.4, -1.1],
+          [6.2, 0.6, 2.8, 0.4],
+        ];
+        poses.forEach(([x, lean, z, rot]) => {
+          const f = new THREE.Group();
+          const body = new THREE.Mesh(
+            new THREE.CapsuleGeometry(0.42, 1.5, 5, 12),
+            matStd(hue, 0.7),
+          );
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 14), matStd(hue, 0.7));
+          head.position.y = 1.2;
+          f.add(body);
+          f.add(head);
+          f.position.set(x, -3.6, z);
+          f.rotation.set(lean * 0.4, rot, lean * 0.5);
+          g.add(f);
+        });
+        const lamp = new THREE.PointLight(0xf6efdd, 40, 40);
+        lamp.position.set(0, 7, 5);
+        g.add(lamp);
+        return { group: g, update: () => {} };
+      };
+
+      /* 1 · Outer Wilds — the system runs, collapses, and gives it all back. */
+      ROOMS.orbit = (hue) => {
+        const g = new THREE.Group();
+        const sun = new THREE.Mesh(new THREE.SphereGeometry(2.5, 32, 26), matGlow(hue));
+        g.add(sun);
+        const sunLight = new THREE.PointLight(hue, 110, 90);
+        g.add(sunLight);
+        const planets = [];
+        const cfg = [
+          [5.6, 0.62, 0x6fa8d0],
+          [8.4, 0.44, 0xd08a5c],
+          [11.6, 0.86, 0x7fd0a0],
+          [15.0, 0.55, 0x9d8fd0],
+        ];
+        cfg.forEach(([r, size, tint], i) => {
+          const p = new THREE.Mesh(new THREE.SphereGeometry(size, 22, 18), matStd(tint, 0.7));
+          g.add(p);
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.018, 6, 96), matGlow(0x2f4258));
+          ring.rotation.x = Math.PI / 2;
+          g.add(ring);
+          planets.push({ p, r, spd: 1.5 - i * 0.26, ph: i * 1.7 });
+        });
+        const stars = [];
+        const rnd = mulberry32(101);
+        for (let i = 0; i < 160; i++) {
+          const s = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 6), matGlow(0xcfe0f5));
+          s.position.set((rnd() - 0.5) * 90, (rnd() - 0.5) * 60, (rnd() - 0.5) * 90);
+          g.add(s);
+          stars.push(s);
+        }
+        return {
+          group: g,
+          update: (u) => {
+            const loop = clamp01(u / 0.7);
+            const end = clamp01((u - 0.7) / 0.22);
+            const reset = clamp01((u - 0.93) / 0.07);
+            planets.forEach(({ p, r, spd, ph }) => {
+              const a = ph + loop * spd * 5.4;
+              const shrink = lerp(1, 0.06, end);
+              p.position.set(
+                Math.cos(a) * r * shrink,
+                Math.sin(a * 0.34) * 0.9 * shrink,
+                Math.sin(a) * r * shrink,
+              );
+              const back = reset > 0 ? reset : 0;
+              if (back > 0) {
+                const a0 = ph;
+                p.position.lerp(
+                  new THREE.Vector3(Math.cos(a0) * r, Math.sin(a0 * 0.34) * 0.9, Math.sin(a0) * r),
+                  back,
+                );
+              }
+            });
+            const boom = end > 0.72 ? (end - 0.72) / 0.28 : 0;
+            sun.scale.setScalar(lerp(1, 0.28, end) + boom * 7);
+            sunLight.intensity = 110 + boom * 300;
+          },
+        };
+      };
+
+      /* ── Assemble the world ───────────────────────────────────────── */
+      const rooms = GAMES.map((gme, i) => {
+        const built = ROOMS[gme.room](gme.hue);
+        built.group.position.set(i % 2 === 0 ? -6.5 : 6.5, 0, -34 - i * 42);
+        built.group.rotation.y = i % 2 === 0 ? 0.24 : -0.24;
+        scene.add(built.group);
+        return built;
+      });
+
+      /* ── Camera path — a pure function of time ────────────────────── */
+      const KEYS = [{ t: 0, p: [0, 3.5, 34], l: [0, 0, -20] }];
+      GAMES.forEach((_, i) => {
+        const gx = i % 2 === 0 ? -6.5 : 6.5,
+          gz = -34 - i * 42;
+        const t0 = stationStart(i);
+        /* Enter wide and off-axis, leave close and swung round — the angle
+           change is what does the explaining. */
+        KEYS.push({
+          t: t0 + 0.9,
+          p: [gx + (i % 2 === 0 ? 15 : -15), 5.4, gz + 26],
+          l: [gx, -1, gz],
+        });
+
+        /* Station 7 (Signalis, i=3) has one — and only one — camera position
+           where the two halves become a single figure, and it is solved, not
+           eyeballed. The far half sits at local z −7.5 scaled 1.62, the near
+           at local z +5.2 scale 1; their angular sizes match when the camera
+           is d from the near one with 1.62/(d+12.7) = 1/d, i.e. d = 20.5.
+           Project that back along the axis through both, through the room's
+           −0.24 rad yaw, and the camera must pass exactly here. Miss it and
+           the room's entire argument never fires. */
+        if (i === 3) {
+          const yaw = -0.24,
+            cy = Math.cos(yaw),
+            sy = Math.sin(yaw);
+          const toWorld = (lx, ly, lz) => [gx + lx * cy + lz * sy, ly, gz - lx * sy + lz * cy];
+          KEYS.push({ t: t0 + 3.9, p: toWorld(0, -1.0, 25.7), l: toWorld(0, -1.0, 5.2) });
+        }
+
+        KEYS.push({
+          t: t0 + 6.9,
+          p: [gx + (i % 2 === 0 ? -9 : 9), 1.4, gz + 13],
+          l: [gx, -1.4, gz],
+        });
+      });
+      KEYS.push({ t: TOTAL, p: [0, 6, -34 - 9 * 42 - 40], l: [0, 0, -34 - 9 * 42 - 90] });
+
+      const tmpP = new THREE.Vector3(),
+        tmpL = new THREE.Vector3();
+      function cameraAt(t) {
+        let i = 0;
+        while (i < KEYS.length - 2 && t > KEYS[i + 1].t) i++;
+        const a = KEYS[i],
+          b = KEYS[i + 1];
+        const k = smooth((t - a.t) / Math.max(0.0001, b.t - a.t));
+        tmpP.set(lerp(a.p[0], b.p[0], k), lerp(a.p[1], b.p[1], k), lerp(a.p[2], b.p[2], k));
+        tmpL.set(lerp(a.l[0], b.l[0], k), lerp(a.l[1], b.l[1], k), lerp(a.l[2], b.l[2], k));
+        camera.position.copy(tmpP);
+        camera.lookAt(tmpL);
+      }
+
+      /* ── Render exactly the requested time ────────────────────────── */
+      function renderAt(t) {
+        const time = Math.max(0, Math.min(TOTAL, t));
+        rooms.forEach((r, i) => {
+          const u = clamp01((time - stationStart(i)) / STATION);
+          r.update(u);
+        });
+        cameraAt(time);
+        renderer.render(scene, camera);
+      }
+
+      window.addEventListener("hf-seek", (e) => renderAt(e.detail.time));
+      renderAt(window.__hfThreeTime || 0);
+
+      /* ══════════════════════════════════════════════════════════════
+         NAMING LAYER — GSAP drives the HTML only. The 3D does the work.
+      ══════════════════════════════════════════════════════════════ */
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.from("#introKicker", { opacity: 0, y: 16, duration: 0.7, ease: "power3.out" }, 0.4);
+      tl.from("#introL1", { yPercent: 112, duration: 0.9, ease: "power4.out" }, 0.7);
+      tl.from("#introRule", { scaleX: 0, duration: 0.8, ease: "power2.inOut" }, 1.4);
+      tl.from("#introSub", { opacity: 0, y: 16, duration: 0.8, ease: "power3.out" }, 1.7);
+      tl.to("#introLayer .bookend", { opacity: 0, duration: 0.6, ease: "power2.in" }, 7.1);
+
+      const rank = document.getElementById("rank");
+      const titleEl = document.getElementById("title");
+      const metaEl = document.getElementById("meta");
+      const hookEl = document.getElementById("hook");
+      const pips = Array.from(document.querySelectorAll(".pip"));
+
+      GAMES.forEach((gme, i) => {
+        const t0 = stationStart(i);
+        /* Swap the copy at the boundary, then play it in. Zero-duration sets
+           at an explicit beat, which the determinism contract sanctions. */
+        tl.set(rank, { innerText: String(gme.rank) }, t0 + 0.02);
+        tl.set(titleEl, { innerText: gme.title }, t0 + 0.02);
+        tl.set(metaEl, { innerText: gme.meta }, t0 + 0.02);
+        tl.set(hookEl, { innerText: gme.hook }, t0 + 0.02);
+        pips.forEach((p, pi) =>
+          tl.set(p, { backgroundColor: pi <= i ? "#f0a63c" : "rgba(200,210,224,0.24)" }, t0 + 0.02),
+        );
+
+        tl.fromTo(
+          "#rank",
+          { opacity: 0, x: -26 },
+          { opacity: 1, x: 0, duration: 0.6, ease: "power3.out", immediateRender: false },
+          t0 + 0.1,
+        );
+        tl.fromTo(
+          "#title",
+          { yPercent: 112 },
+          { yPercent: 0, duration: 0.72, ease: "power4.out", immediateRender: false },
+          t0 + 0.24,
+        );
+        tl.fromTo(
+          "#meta",
+          { opacity: 0, y: 12 },
+          { opacity: 1, y: 0, duration: 0.55, ease: "power3.out", immediateRender: false },
+          t0 + 0.5,
+        );
+        tl.fromTo(
+          "#hook",
+          { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.65, ease: "power3.out", immediateRender: false },
+          t0 + 0.72,
+        );
+
+        if (i < GAMES.length - 1) {
+          tl.to("#card", { opacity: 0, duration: 0.42, ease: "power2.in" }, t0 + STATION - 0.5);
+          tl.set("#card", { opacity: 1 }, t0 + STATION - 0.02);
+        }
+      });
+
+      tl.to("#card", { opacity: 0, duration: 0.5, ease: "power2.in" }, 87.3);
+      tl.to("#rail", { opacity: 0, duration: 0.5, ease: "power2.in" }, 87.3);
+
+      tl.from("#outroL1", { yPercent: 112, duration: 0.9, ease: "power4.out" }, 88.4);
+      tl.from("#outroRule", { scaleX: 0, duration: 0.8, ease: "power2.inOut" }, 89.0);
+      tl.from("#outroSub", { opacity: 0, y: 16, duration: 0.8, ease: "power3.out" }, 89.3);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

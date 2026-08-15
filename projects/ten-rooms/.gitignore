@@ -1,0 +1,7 @@
+# Verification output — regenerate with `npx hyperframes snapshot .`
+snapshots/
+
+# Vendored three.js. Every published build exceeds the repo's 500 KB
+# non-LFS limit (scripts/check-large-files.sh), so it is fetched rather than
+# committed. Restore with:  node fetch-three.mjs
+assets/three.module.js
